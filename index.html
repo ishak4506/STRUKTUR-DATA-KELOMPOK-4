@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Inventori Apotek</title>
+    <link rel="stylesheet" href="apotek.css" />
+  </head>
+
+  <body>
+    <div class="app">
+      <div class="sidebar">
+        <h2>Inventori</h2>
+        <button onclick="showView('home')">Dashboard</button>
+        <button onclick="showView('stock')">Stok Barang</button>
+      </div>
+
+      <div class="main">
+        <div class="header dashboard-header">
+          <h1>Dashboard Penjualan</h1>
+          <div class="header-right">
+            <button class="btn-primary" onclick="openModal()">
+              + Tambah Barang
+            </button>
+            <button class="btn-cari" onclick="cariBarang()">Cari Barang</button>
+            <!-- Tombol Cari Barang -->
+          </div>
+        </div>
+
+        <div class="content">
+          <div id="home" class="view">
+            <div class="dashboard-row">
+              <div class="status-card danger">
+                <div class="status-title">Total Barang</div>
+                <div class="status-value" id="totalBarang">0</div>
+                <div class="status-label">produk</div>
+              </div>
+
+              <div class="status-card warning">
+                <div class="status-title">Total Stok</div>
+                <div class="status-value" id="totalStok">0</div>
+                <div class="status-label">stok</div>
+              </div>
+
+              <div class="status-card info">
+                <div class="status-title">Dekat Kadaluarsa</div>
+                <div class="status-value" id="dekatKadaluarsa">0</div>
+                <div class="status-label">stok</div>
+              </div>
+
+              <div class="status-card gray">
+                <div class="status-title">Sudah Kadaluarsa</div>
+                <div class="status-value" id="sudahKadaluarsa">0</div>
+                <div class="status-label">stok</div>
+              </div>
+            </div>
+
+            <h2 class="section-title">Daftar Obat</h2>
+            <div id="produkGrid" class="produk-grid"></div>
+          </div>
+
+          <div id="stock" class="view">
+            <h2>Stok Barang</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama</th>
+                  <th>Harga</th>
+                  <th>Stok</th>
+                  <th>Kadaluarsa</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tabelBarang"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>Tambah Barang</h3>
+
+        <input type="file" id="modalGambar" accept="image/*" />
+        <input type="text" id="modalNamaBarang" placeholder="Nama Barang" />
+        <input type="number" id="modalHargaBarang" placeholder="Harga Barang" />
+        <input type="number" id="modalStokBarang" placeholder="Jumlah Stok" />
+        <label>Tanggal Kadaluarsa</label>
+        <input type="date" id="modalKadaluarsa" />
+
+        <div class="modal-actions">
+          <button class="btn-primary" onclick="tambahBarang()">Simpan</button>
+          <button class="btn-secondary" onclick="closeModal()">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* =========================
+       JSON STORAGE (LOCAL)
+    ========================== */
+
+      let barang = JSON.parse(localStorage.getItem("dataBarang")) || [];
+
+      function simpanJSON() {
+        localStorage.setItem("dataBarang", JSON.stringify(barang));
+      }
+
+      function loadJSON() {
+        barang = barang.map((b) => ({
+          ...b,
+          kadaluarsa: new Date(b.kadaluarsa),
+        }));
+        tampilkanBarang();
+        tampilkanProduk();
+        updateDashboard();
+      }
+
+      /* =========================
+       VIEW
+    ========================== */
+      function showView(id) {
+        document
+          .querySelectorAll(".view")
+          .forEach((v) => (v.style.display = "none"));
+        document.getElementById(id).style.display = "block";
+      }
+      showView("home");
+
+      function openModal() {
+        modal.style.display = "flex";
+        [
+          "modalGambar",
+          "modalNamaBarang",
+          "modalHargaBarang",
+          "modalStokBarang",
+          "modalKadaluarsa",
+        ].forEach((id) => (document.getElementById(id).value = ""));
+      }
+
+      function closeModal() {
+        modal.style.display = "none";
+      }
+
+      /* =========================
+       CRUD BARANG
+    ========================== */
+      function tambahBarang() {
+        const nama = modalNamaBarang.value.trim();
+        const harga = Number(modalHargaBarang.value);
+        const stok = Number(modalStokBarang.value);
+        const kadaluarsa = modalKadaluarsa.value;
+        const file = modalGambar.files[0];
+
+        if (!nama || !harga || !stok || !kadaluarsa || !file) {
+          alert("Lengkapi semua data!");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          barang.push({
+            nama,
+            harga,
+            stok,
+            kadaluarsa,
+            gambar: reader.result,
+          });
+
+          simpanJSON();
+          loadJSON();
+          closeModal();
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function hapusBarang(i) {
+        barang.splice(i, 1);
+        simpanJSON();
+        loadJSON();
+      }
+
+      /* =========================
+       TAMPILAN
+    ========================== */
+      function tampilkanProduk() {
+        produkGrid.innerHTML = "";
+        barang.forEach((b) => {
+          produkGrid.innerHTML += `
+          <div class="produk-card">
+            <img src="${b.gambar}">
+            <div class="produk-nama">${b.nama}</div>
+            <div class="produk-harga">Rp ${b.harga.toLocaleString(
+              "id-ID"
+            )}</div>
+          </div>`;
+        });
+      }
+
+      function tampilkanBarang() {
+        tabelBarang.innerHTML = "";
+        barang.forEach((b, i) => {
+          tabelBarang.innerHTML += `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${b.nama}</td>
+            <td>Rp ${b.harga.toLocaleString("id-ID")}</td>
+            <td>${b.stok}</td>
+            <td>${new Date(b.kadaluarsa).toISOString().split("T")[0]}</td>
+            <td>
+              <button class="delete-btn" onclick="hapusBarang(${i})">Hapus</button>
+            </td>
+          </tr>`;
+        });
+      }
+
+      function updateDashboard() {
+        totalBarang.innerText = barang.length;
+        totalStok.innerText = barang.reduce((a, b) => a + b.stok, 0);
+
+        let dekat = 0,
+          habis = 0;
+        const today = new Date();
+
+        barang.forEach((b) => {
+          const diff = (new Date(b.kadaluarsa) - today) / (1000 * 60 * 60 * 24);
+          if (diff < 0) habis += b.stok;
+          else if (diff <= 10) dekat += b.stok;
+        });
+
+        dekatKadaluarsa.innerText = dekat;
+        sudahKadaluarsa.innerText = habis;
+      }
+
+      /* =========================
+       CARI BARANG FUNCTION
+    ========================== */
+      function cariBarang() {
+        const query = prompt("Masukkan nama barang yang dicari:");
+
+        if (query) {
+          const hasilPencarian = barang.filter((b) =>
+            b.nama.toLowerCase().includes(query.toLowerCase())
+          );
+
+          if (hasilPencarian.length > 0) {
+            let hasilHTML = "<h3>Hasil Pencarian:</h3>";
+            hasilPencarian.forEach((b) => {
+              hasilHTML += `
+                <div class="produk-card">
+                  <img src="${b.gambar}" alt="${b.nama}">
+                  <div class="produk-nama">${b.nama}</div>
+                  <div class="produk-harga">Rp ${b.harga.toLocaleString(
+                    "id-ID"
+                  )}</div>
+                </div>
+              `;
+            });
+            document.getElementById("produkGrid").innerHTML = hasilHTML;
+          } else {
+            alert("Barang tidak ditemukan!");
+          }
+        }
+      }
+
+      /* =========================
+       LOAD SAAT REFRESH
+    ========================== */
+      loadJSON();
+    </script>
+  </body>
+</html>
